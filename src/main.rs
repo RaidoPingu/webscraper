@@ -23,8 +23,8 @@ fn main() ->Result<()> {
     let koomiksite_lopp = 1020;
     while koomiksite_algus < koomiksite_lopp {
         let client = Client::new();
-        let mut url = format!("https://www.giantitp.com/comics/oots{}.html" , koomiksite_algus.to_string());
-        let mut res = client.get(url)
+        let url = format!("https://www.giantitp.com/comics/oots{}.html" , koomiksite_algus.to_string());
+        let res = client.get(url)
             .send()
             .map_err(|err|
                 std::io::Error::new(std::io::ErrorKind::Other, err))?;
