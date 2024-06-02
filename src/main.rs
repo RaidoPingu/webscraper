@@ -1,11 +1,9 @@
+use std::fs::File;
 use std::iter::Map;
-use std::mem::take;
+use std::io::{copy, Result};
 use reqwest::blocking::Client;
-use scraper::{ElementRef, Html, Selector};
-use regex::Regex;
+use scraper::{ElementRef, Html};
 use scraper::html::Select;
-use scraper::Node::Element;
-use tokio::select;
 
 
 fn extract_image_url(html: &str) -> Option<String> {
@@ -20,16 +18,17 @@ fn extract_image_url(html: &str) -> Option<String> {
     Some(url.to_string())
 }
 
-fn main() {
+fn main() ->Result<()> {
     let client = Client::new();
     let mut res = client.get("https://www.giantitp.com/comics/oots1278.html")
         .send()
-        .unwrap();
+        .map_err(|err|
+            std::io::Error::new(std::io::ErrorKind::Other, err))?;
     let body = res.text().unwrap();
     let _document = Html::parse_document(&body);
-    let pildiLink = scraper::Selector::parse("td").unwrap();
+    let pildi_link = scraper::Selector::parse("td").unwrap();
 
-    let image_selector: Map<Select, fn(ElementRef) -> String> = _document.select(&pildiLink).map(|x| x.inner_html());
+    let image_selector: Map<Select, fn(ElementRef) -> String> = _document.select(&pildi_link).map(|x| x.inner_html());
 
     let items: Vec<String> = image_selector.collect();
 
@@ -37,33 +36,21 @@ fn main() {
         println!("last item: {:?}", last_item);
         if let Some(image_url) = extract_image_url(last_item) {
             println!("Extracted url: {}", image_url);
+            let filename = "comics/Image.png";
+            let mut response = client.get(&image_url)
+                .send()
+                .map_err(|err|
+                    std::io::Error::new(std::io::ErrorKind::Other, err))?;
+            let mut file = File::create(filename)?;
 
+            copy(&mut response, &mut file)?;
+
+            println!("Image downloaded successfully: {}", filename);
         } else {
             println!("No items found");
         }
-
-
-        //let re = Regex::new(r"^https?://[a-z0-9-.]{2,}\.[a-z]{2,4}(:[0-9]{2,5})?/?.*$").unwrap();
-
-
-        //let PuhasPildiLink = image_selector.zip(1..12)
-        //   .for_each((|(item,num)| println!("{}. {}",num, item)));
-
-
-        //let mut WebAdress =vec![];
-        //for (_, [path]) in re.captures_iter(PuhasPildiLink).map(|c|c.extract()) {
-        //    res
-        // }
-        // println!("{:?}", WebAdress);
-
-        /* for element in pildiLink.(&pildiLink) {
-        let link_selector = Selector::parse("a").unwrap();
-
-       for link in element.select(link_selector){
-           if let Some(href) = link.value().attr("href") {
-               println!("{}", href);
-           }
-       }
-    }*/
     }
+
+    Ok(())
+
 }
