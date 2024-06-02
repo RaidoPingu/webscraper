@@ -8,3 +8,4 @@ edition = "2021"
 reqwest ={ version = "0.12.4" , features = [ "blocking"]}
 scraper = "0.19.0"
 tokio = { version = "1.0.0", features = ["rt", "rt-multi-thread", "macros"] }
+regex = "1.10.4"
