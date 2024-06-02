@@ -7,9 +7,8 @@ use scraper::html::Select;
 
 
 fn extract_image_url(html: &str) -> Option<String> {
-    // Find the start position of the URL
     let start_pos = html.find("src=\"")?;
-    let remaining = &html[start_pos + 5..]; // Skip "src=\""
+    let remaining = &html[start_pos + 5..];
 
     // Find the end position of the URL
     let end_pos = remaining.find("\"")?;
@@ -19,36 +18,44 @@ fn extract_image_url(html: &str) -> Option<String> {
 }
 
 fn main() ->Result<()> {
-    let client = Client::new();
-    let mut res = client.get("https://www.giantitp.com/comics/oots1278.html")
-        .send()
-        .map_err(|err|
-            std::io::Error::new(std::io::ErrorKind::Other, err))?;
-    let body = res.text().unwrap();
-    let _document = Html::parse_document(&body);
-    let pildi_link = scraper::Selector::parse("td").unwrap();
 
-    let image_selector: Map<Select, fn(ElementRef) -> String> = _document.select(&pildi_link).map(|x| x.inner_html());
+    let mut koomiksite_algus = 1000;
+    let koomiksite_lopp = 1020;
+    while koomiksite_algus < koomiksite_lopp {
+        let client = Client::new();
+        let mut url = format!("https://www.giantitp.com/comics/oots{}.html" , koomiksite_algus.to_string());
+        let mut res = client.get(url)
+            .send()
+            .map_err(|err|
+                std::io::Error::new(std::io::ErrorKind::Other, err))?;
+        let body = res.text().unwrap();
+        let _document = Html::parse_document(&body);
+        let pildi_link = scraper::Selector::parse("td").unwrap();
 
-    let items: Vec<String> = image_selector.collect();
+        let image_selector: Map<Select, fn(ElementRef) -> String> = _document.select(&pildi_link).map(|x| x.inner_html());
 
-    if let Some(last_item) = items.get(10) {
-        println!("last item: {:?}", last_item);
-        if let Some(image_url) = extract_image_url(last_item) {
-            println!("Extracted url: {}", image_url);
-            let filename = "comics/Image.png";
-            let mut response = client.get(&image_url)
-                .send()
-                .map_err(|err|
-                    std::io::Error::new(std::io::ErrorKind::Other, err))?;
-            let mut file = File::create(filename)?;
+        let items: Vec<String> = image_selector.collect();
 
-            copy(&mut response, &mut file)?;
+        if let Some(last_item) = items.get(10) {
+            println!("last item: {:?}", last_item);
+            if let Some(image_url) = extract_image_url(last_item) {
+                println!("Extracted url: {}", image_url);
+                let filename = format!("comics/Image{}.png", koomiksite_algus);
+                let filename_clone=filename.clone();
+                let mut response = client.get(&image_url)
+                    .send()
+                    .map_err(|err|
+                        std::io::Error::new(std::io::ErrorKind::Other, err))?;
+                let mut file = File::create(filename)?;
 
-            println!("Image downloaded successfully: {}", filename);
-        } else {
-            println!("No items found");
+                copy(&mut response, &mut file)?;
+
+                println!("Image downloaded successfully: {}", filename_clone);
+            } else {
+                println!("No items found");
+            }
         }
+        koomiksite_algus= koomiksite_algus + 1;
     }
 
     Ok(())
